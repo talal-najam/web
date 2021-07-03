@@ -6,7 +6,6 @@ import styled from 'styled-components';
 import { getHeroItemPopularity } from '../../actions';
 import Table from '../Table';
 import MatchupsSkeleton from '../Skeletons/MatchupsSkeleton';
-import { getOrdinal } from '../../utility';
 import { inflictorWithValue } from '../Visualizations';
 import constants from '../constants';
 
@@ -26,7 +25,24 @@ export const StyledItemContainer = styled.div`
   min-width: 240px;
   background-color: ${constants.defaultPrimaryColorSolid};
   padding: 1rem 2rem;
-§`;
+`;
+
+const itemsTd = (row) => {
+  const itemArray = row.items
+    .sort((a, b) => {
+      return parseFloat(b.itemCount) - parseFloat(a.itemCount);
+    })
+    .map((itemRow) => {
+      const itemName = itemIds[itemRow.itemId];
+      return inflictorWithValue(itemName, itemRow.itemCount);
+    });
+
+  return (
+    <StyledDivClearBoth>
+      {itemArray && <div>{itemArray}</div>}
+    </StyledDivClearBoth>
+  );
+};
 
 class ItemPopularity extends React.Component {
   static propTypes = {
@@ -44,68 +60,63 @@ class ItemPopularity extends React.Component {
     }
   }
 
-  massageData = (data) => {
-    const result = {};
+  massageData = (data, strings) => {
+    const resultData = [];
 
-    // Replace item id with name for sorting
-    Object.keys(data).forEach((timing) => {
-      result[timing] = {};
-      Object.keys(data[timing]).forEach((itemId) => {
-        const itemName = itemIds[itemId];
-        const itemCount = data[timing][itemId];
-        result[timing][itemName] = itemCount;
+    Object.keys(data).forEach((timeKey) => {
+      const result = {};
+      result.timing = strings[`heading_${timeKey}`];
+      result.items = [];
+      Object.keys(data[timeKey]).forEach((itemId) => {
+        const itemCount = data[timeKey][itemId];
+        result.items.push({
+          itemId,
+          itemCount,
+        });
       });
+
+      resultData.push(result);
     });
 
-    // Sorting according to buy count
-    Object.keys(result).forEach((gametime) => {
-      const nestedobj = result[gametime];
-      const sortable = Object.fromEntries(
-        Object.entries(nestedobj).sort(([, a], [, b]) => b - a)
-      );
-      result[gametime] = sortable;
-    });
-
-    // Render item with icons
-    const finalResult = {};
-
-    Object.keys(result).forEach((timing) => {
-      finalResult[timing] = [];
-      Object.keys(result[timing]).forEach((itemName) => {
-        const itemCount = result[timing][itemName];
-        finalResult[timing].push(inflictorWithValue(itemName, itemCount));
-      });
-    });
-
-    return finalResult;
+    return resultData;
   };
 
-  renderTable() {
-    const { data, strings } = this.props;
-    const res = [];
-
-    const itemsObject = this.massageData(data);
-
-    Object.keys(itemsObject).map((timeWindow) => {
-      return res.push(
-        <div>
-          <h3>{strings[`heading_${timeWindow}`]}</h3>
-          {itemsObject[timeWindow]}
-        </div>
-      );
-    });
-
-    return <div>{res}</div>;
-  }
 
   render() {
-    const { isLoading } = this.props;
+    const { isLoading, strings, data } = this.props;
+    const items = this.massageData(data, strings);
 
     if (isLoading) {
       return <MatchupsSkeleton />;
     }
+    //todo: work on these columns
+    const cols = [
+      {
+        displayName: strings.th_items,
+        tooltip: strings.tooltip_items,
+        field: 'timing',
+        width: 240,
+      },
+      {
+        displayName: strings.th_items,
+        tooltip: strings.tooltip_items,
+        field: 'items',
+        width: 240,
+        displayFn: itemsTd,
+      },
+    ];
 
-    return <StyledItemContainer>{this.renderTable()}</StyledItemContainer>;
+    return (
+      <div>
+        <Table
+          data={items}
+          columns={cols}
+          heading="Items"
+          // hoverRowColumn
+        />
+      </div>
+    );
+
   }
 }
 
