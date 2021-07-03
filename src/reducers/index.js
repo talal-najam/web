@@ -24,6 +24,7 @@ export default combineReducers({
   metadata: reducer('metadata'),
   match: reducer('match'),
   heroRanking: reducer('heroRanking'),
+  heroItemPopularity: reducer('heroItemPopularity'),
   heroBenchmark: reducer('heroBenchmark'),
   heroRecentGames: reducer('heroRecentGames'),
   heroMatchups: reducer('heroMatchups'),
