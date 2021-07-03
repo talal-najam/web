@@ -161,7 +161,7 @@ class Hero extends React.Component {
         content: (props) => (
           <div>
             <Heading
-              title={strings.tab_players}
+              title={strings.tab_item_popularity}
               subtitle={strings.hero_disclaimer_pro}
             />
             <ItemPopularity {...props} />
