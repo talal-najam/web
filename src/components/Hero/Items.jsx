@@ -1,47 +1,44 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { bool, func, shape } from 'prop-types';
+import { bool, func, shape, string } from 'prop-types';
 import itemIds from 'dotaconstants/build/item_ids.json';
-import styled from 'styled-components';
 import { getHeroItemPopularity } from '../../actions';
 import Table from '../Table';
 import MatchupsSkeleton from '../Skeletons/MatchupsSkeleton';
 import { inflictorWithValue } from '../Visualizations';
-import constants from '../constants';
-
-// [ ] todo: update all tab strings for all json values
-// [x] todo: check whether the Heading subtitle is public or pro -
-// [ ] todo: consider renaming to just Items to stay consistent
-// [x] todo: add custom skeleton for this component
-
-export const StyledDivClearBoth = styled.div`
-  min-width: 240px;
-  > div {
-    clear: both;
-  }
-`;
-
-export const StyledItemContainer = styled.div`
-  min-width: 240px;
-  background-color: ${constants.defaultPrimaryColorSolid};
-  padding: 1rem 2rem;
-`;
+import ErrorBox from '../Error/ErrorBox';
 
 const itemsTd = (row) => {
   const itemArray = row.items
     .sort((a, b) => {
-      return parseFloat(b.itemCount) - parseFloat(a.itemCount);
+      return b.itemCount - a.itemCount;
     })
     .map((itemRow) => {
       const itemName = itemIds[itemRow.itemId];
       return inflictorWithValue(itemName, itemRow.itemCount);
     });
 
-  return (
-    <StyledDivClearBoth>
-      {itemArray && <div>{itemArray}</div>}
-    </StyledDivClearBoth>
-  );
+  return <>{itemArray && <div>{itemArray}</div>}</>;
+};
+
+const getItemColumns = (strings) => {
+  const cols = [
+    {
+      displayName: strings.th_time,
+      tooltip: strings.tooltip_time,
+      field: 'timing',
+      width: 240,
+    },
+    {
+      displayName: strings.th_items,
+      tooltip: strings.tooltip_items_popularity,
+      field: 'items',
+      width: 800,
+      displayFn: itemsTd,
+    },
+  ];
+
+  return cols;
 };
 
 class ItemPopularity extends React.Component {
@@ -50,6 +47,7 @@ class ItemPopularity extends React.Component {
     onGetHeroItemPopularity: func,
     strings: shape({}),
     data: shape({}),
+    heroName: string
   };
 
   componentDidMount() {
@@ -60,63 +58,53 @@ class ItemPopularity extends React.Component {
     }
   }
 
-  massageData = (data, strings) => {
-    const resultData = [];
+  getItemRows = (data, strings) => {
+    const result = [];
 
     Object.keys(data).forEach((timeKey) => {
-      const result = {};
-      result.timing = strings[`heading_${timeKey}`];
-      result.items = [];
+      const row = {};
+      row.timing = strings[`heading_${timeKey}`];
+      row.items = [];
       Object.keys(data[timeKey]).forEach((itemId) => {
         const itemCount = data[timeKey][itemId];
-        result.items.push({
+        row.items.push({
           itemId,
           itemCount,
         });
       });
 
-      resultData.push(result);
+      result.push(row);
     });
 
-    return resultData;
+    return result;
   };
 
-
   render() {
-    const { isLoading, strings, data } = this.props;
-    const items = this.massageData(data, strings);
+    const { isLoading, strings, data, heroName } = this.props;
+    const itemRows = this.getItemRows(data, strings);
+    
+    // If no pro data is available e.g. new hero not added to captains mode yet
+    const isDataAvailable = itemRows.length > 0 && itemRows[0].items.length > 0; 
+    const errorText = `${heroName}'s items from professional matches not found...`;
 
     if (isLoading) {
       return <MatchupsSkeleton />;
     }
-    //todo: work on these columns
-    const cols = [
-      {
-        displayName: strings.th_items,
-        tooltip: strings.tooltip_items,
-        field: 'timing',
-        width: 240,
-      },
-      {
-        displayName: strings.th_items,
-        tooltip: strings.tooltip_items,
-        field: 'items',
-        width: 240,
-        displayFn: itemsTd,
-      },
-    ];
+
+    if (!isDataAvailable) {
+      return <ErrorBox text={errorText} />;
+    }
 
     return (
       <div>
         <Table
-          data={items}
-          columns={cols}
+          data={itemRows}
+          columns={getItemColumns(strings)}
           heading="Items"
-          // hoverRowColumn
+          hoverRowColumn
         />
       </div>
     );
-
   }
 }
 
